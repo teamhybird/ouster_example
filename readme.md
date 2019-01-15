@@ -1,6 +1,7 @@
 # OS1 Example Client and ROS Node
 
 ## Contents
+(Carl) You can run at most one of these at a time.
 * `ouster_client/` contains a simple C++ client for the OS1 sensor
 * `ouster_ros/` contains an example ROS node for publishing point cloud messages
 * `ouster_viz/` contains a  visualizer for an OS1 sensor
@@ -44,3 +45,16 @@
   - In a second terminal, run `rosbag play --clock <bagfile>`
   - To visualize output, run `rviz -d /path/to/ouster_ros/viz.rviz` in another terminal
 * Sample raw sensor output is available [here](https://data.ouster.io/sample-data-2018-08-29)
+
+### Configuration
+(Carl) The following environment variables are supported:
+
+| var | description | options | default |
+| --- | --- | --- | --- |
+| `scan_dur_ns`    | Duration of scan | Duration of scan in nanoseconds | 100000000 |
+| `os1_hostname`   | IP or hostname of the ouster OS1 device | `<ip address>` | `localhost` |
+| `os1_udp_dest`   | IP of the machine running ouster_ros | `<ip address>` | `192.168.1.1` |
+| `os1_lidar_port` | Port to forward lidar data to | `<port number>` | `-1` |
+| `os1_imu_port`   | Port to forward imu data to | `<port number>` | `-1` |
+| `replay`         |  | `true \| false` | `true` |
+
