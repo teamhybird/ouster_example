@@ -5,6 +5,7 @@
  * by publishing and listening to PacketMsg topics
  *
  * ROS Parameters
+ * rotate_using_imu: 1 means rotate the points according to the IMU data
  * scan_dur_ns: nanoseconds to batch lidar packets before publishing a cloud
  * os1_hostname: hostname or IP in dotted decimal form of the sensor
  * os1_udp_dest: hostname or IP where the sensor will send data packets
@@ -37,6 +38,7 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "ouster_driver");
     ros::NodeHandle nh("~");
 
+	ouster_ros::OS1::rotate_using_imu = nh.param("rotate_using_imu", 1);
     auto scan_dur = ns(nh.param("scan_dur_ns", 100000000));
     auto os1_hostname = nh.param("os1_hostname", std::string("localhost"));
     auto os1_udp_dest = nh.param("os1_udp_dest", std::string("192.168.1.1"));

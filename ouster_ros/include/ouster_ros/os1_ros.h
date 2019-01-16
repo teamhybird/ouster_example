@@ -23,6 +23,10 @@ namespace OS1 {
 using CloudOS1 = pcl::PointCloud<PointOS1>;
 using ns = std::chrono::nanoseconds;
 
+/* Global parameter */
+extern int rotate_using_imu;
+
+
 /**
  * Read an imu packet into a ROS message. Blocks for up to a second if no data
  * is available.

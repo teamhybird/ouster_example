@@ -4,10 +4,18 @@
 #include "ouster/os1_packet.h"
 #include "ouster_ros/os1_ros.h"
 
+// Maths libraries
+#include <Eigen/Eigen>
+#include <Eigen/Geometry>
+
 namespace ouster_ros {
 namespace OS1 {
 
 using namespace ouster::OS1;
+
+Eigen::Matrix3f imuRotate;
+int rotate_using_imu = 0;
+ros::Time last_log_time(0.0);
 
 ns timestamp_of_imu_packet(const PacketMsg& pm) {
     return ns(imu_gyro_ts(pm.buf.data()));
@@ -57,7 +65,26 @@ sensor_msgs::Imu packet_to_imu_msg(const PacketMsg& p) {
         m.linear_acceleration_covariance[i] = 0.01;
         m.angular_velocity_covariance[i] = 6e-4;
     }
-
+    
+    if (ouster_ros::OS1::rotate_using_imu)
+    {
+		// to do: convert the gravity vector into a one-dimensional rotation around the gimbal axis
+		// which counteracts the motor rotation
+		float angle = atan2(-m.linear_acceleration.y, -m.linear_acceleration.z);
+		// If angle is - then we are rolling left, else rolling right
+		imuRotate = Eigen::AngleAxis<float>(-angle, Eigen::Vector3f::UnitX());
+		if ((m.header.stamp - last_log_time).toSec() > 1.0f)
+		{
+			last_log_time = m.header.stamp;
+			int angle_deg = angle * 180 / M_PI;
+			printf("(%f,%f,%f)=%d ",
+				(float)m.linear_acceleration.x,
+				(float)m.linear_acceleration.y,
+				(float)m.linear_acceleration.z,
+				angle_deg);
+			fflush(stdout);
+		}
+	}
     return m;
 }
 
@@ -80,13 +107,28 @@ static PointOS1 nth_point(int ind, const uint8_t* col_buf) {
     PointOS1 point;
     point.reflectivity = px_reflectivity(px_buf);
     point.intensity = px_signal_photons(px_buf);
-    point.x = -r * tte.cos_beam_altitude_angles * cosf(h_angle);
-    point.y = r * tte.cos_beam_altitude_angles * sinf(h_angle);
-    point.z = r * tte.sin_beam_altitude_angles;
+    if (ouster_ros::OS1::rotate_using_imu)
+    {
+		auto pt1 = Eigen::Vector3f(
+			-r * tte.cos_beam_altitude_angles * cosf(h_angle),
+			r * tte.cos_beam_altitude_angles * sinf(h_angle),
+			r * tte.sin_beam_altitude_angles);
+		auto pt2 = imuRotate * pt1;
+		
+		point.x = pt2.x();
+		point.y = pt2.y();
+		point.z = pt2.z();
+	}
+	else
+	{
+		point.x = -r * tte.cos_beam_altitude_angles * cosf(h_angle);
+		point.y = r * tte.cos_beam_altitude_angles * sinf(h_angle);
+		point.z = r * tte.sin_beam_altitude_angles;
+	}
     point.ring = ind;
-
     return point;
 }
+
 void add_packet_to_cloud(ns scan_start_ts, ns scan_duration,
                          const PacketMsg& pm, CloudOS1& cloud) {
     const uint8_t* buf = pm.buf.data();

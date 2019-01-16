@@ -56,5 +56,18 @@
 | `os1_udp_dest`   | IP of the machine running ouster_ros | `<ip address>` | `192.168.1.1` |
 | `os1_lidar_port` | Port to forward lidar data to | `<port number>` | `-1` |
 | `os1_imu_port`   | Port to forward imu data to | `<port number>` | `-1` |
-| `replay`         |  | `true \| false` | `true` |
+| `replay`         | Subscribe to data (true) or publish data (false) | `true \| false` | `true` |
+
+### ROS Topics
+If "replay" is true, the following ROS topics are subscribed to:
+
+* lidar_packets
+* imu_packets
+
+If "replay" is false, the following ROS topics are advertised:
+
+* lidar_packets
+* imu_packets
+* points
+* imu
 
