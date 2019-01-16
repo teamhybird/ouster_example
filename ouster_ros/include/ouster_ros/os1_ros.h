@@ -25,6 +25,7 @@ using ns = std::chrono::nanoseconds;
 
 /* Global parameter */
 extern int rotate_using_imu;
+extern int decimate_mask;
 
 
 /**

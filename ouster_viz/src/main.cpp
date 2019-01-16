@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
 
     // Poll the client for data and add to our lidar scan
     while (!end_program) {
-        OS1::client_state st = OS1::poll_client(*cli);
+        OS1::client_state st = OS1::poll_client(*cli); // This code is in ouster_client rather than ouster_ros
 
         if (st & OS1::client_state::ERROR) {
             std::cerr << "Client returned error state" << std::endl;
