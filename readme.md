@@ -51,12 +51,14 @@
 
 | var | description | options | default |
 | --- | --- | --- | --- |
-| `scan_dur_ns`    | Duration of scan | Duration of scan in nanoseconds | 100000000 |
-| `os1_hostname`   | IP or hostname of the ouster OS1 device | `<ip address>` | `localhost` |
-| `os1_udp_dest`   | IP of the machine running ouster_ros | `<ip address>` | `192.168.1.1` |
-| `os1_lidar_port` | Port to forward lidar data to | `<port number>` | `-1` |
-| `os1_imu_port`   | Port to forward imu data to | `<port number>` | `-1` |
-| `replay`         | Subscribe to data (true) or publish data (false) | `true \| false` | `true` |
+| `rotate_using_imu` | Should we rotate the points using the IMU? | 0=no  | 1 |
+| `decimate_mask`    | Decimate the points being sent e.g. 961 | integer | 0 |
+| `scan_dur_ns`      | Duration of scan | Duration of scan in nanoseconds | 100000000 |
+| `os1_hostname`     | IP or hostname of the ouster OS1 device | `<ip address>` | `localhost` |
+| `os1_udp_dest`     | IP of the machine running ouster_ros | `<ip address>` | `192.168.1.1` |
+| `os1_lidar_port`   | Port to forward lidar data to | `<port number>` | `-1` |
+| `os1_imu_port`     | Port to forward imu data to | `<port number>` | `-1` |
+| `replay`           | Subscribe to data (true) or publish data (false) | `true \| false` | `true` |
 
 ### ROS Topics
 If "replay" is true, the following ROS topics are subscribed to:
