@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
 
     // Parse the input ROS parameters
     ouster_ros::OS1::rotate_using_imu = nh.param("rotate_using_imu", 1);
-    ouster_ros::OS1::decimate_mask = nh.param("decimate_mask", 0);
+    ouster_ros::OS1::decimate_mask = nh.param("decimate_mask", 64);
     auto scan_dur = ns(nh.param("scan_dur_ns", 100000000)); // Process 100ms of data at a time
     auto os1_hostname = nh.param("os1_hostname", std::string("localhost"));
     auto os1_udp_dest = nh.param("os1_udp_dest", std::string("192.168.1.1"));

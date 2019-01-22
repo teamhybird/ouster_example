@@ -149,7 +149,9 @@ void add_packet_to_cloud(ns scan_start_ts, ns scan_duration,
                          const PacketMsg& pm, CloudOS1& cloud) {
     const uint8_t* buf = pm.buf.data();
     
-    int idecimate = -1;
+    static int idecimatetoggle = 0;
+    idecimatetoggle++;
+    int idecimate = (idecimatetoggle & 64) ? 64-1 : 0-1;
     for (int icol = 0; icol < columns_per_buffer; icol++) {
         const uint8_t* col_buf = nth_col(icol, buf);
         float ts = (col_timestamp(col_buf) - scan_start_ts.count()) /
