@@ -17,10 +17,23 @@ namespace OS1 {
 
 using namespace ouster::OS1;
 
-Eigen::Matrix3f imuRotate;
+// Note that ROS coordinate system is x=forwards, y=left, z=up
+Eigen::Matrix3f imuRotateRoll, imuRotatePitch, imuRotateYaw, imuRotateYawInv, imuRotateCombined;
 int rotate_using_imu = 0;
 int decimate_mask = 0;
+float yaw_angle = 0.0f;
 ros::Time last_log_time(0.0);
+
+// -----------------------------------------------------------------------------
+// Set the yaw of the drone (message received from IMU) 
+// Input is in degrees 0..360
+void set_yaw(float h)
+{
+    yaw_angle = (h - 180.0f) * (M_PI / 180.0f);
+    imuRotateYaw = Eigen::AngleAxis<float>(yaw_angle, Eigen::Vector3f::UnitZ());
+    imuRotateYawInv = Eigen::AngleAxis<float>(-yaw_angle, Eigen::Vector3f::UnitZ());
+    imuRotateCombined = imuRotateYawInv * imuRotateRoll;
+}
 
 // -----------------------------------------------------------------------------
 ns timestamp_of_imu_packet(const PacketMsg& pm) {
@@ -79,20 +92,29 @@ sensor_msgs::Imu packet_to_imu_msg(const PacketMsg& p) {
     
     if (rotate_using_imu)
     {
-        // to do: convert the gravity vector into a one-dimensional rotation around the gimbal axis
+        auto pt1 = Eigen::Vector3f(m.linear_acceleration.x, m.linear_acceleration.y, m.linear_acceleration.z);
+        auto pt2 = imuRotateYaw * pt1;
+        // Convert the gravity vector into a one-dimensional rotation around the gimbal axis
         // which counteracts the motor rotation
-        float angle = atan2(-m.linear_acceleration.y, -m.linear_acceleration.z);
+        float roll_angle = atan2(-pt1.y(), -pt1.z());
         // If angle is - then we are rolling left, else rolling right
-        imuRotate = Eigen::AngleAxis<float>(angle, Eigen::Vector3f::UnitX());
-        if ((m.header.stamp - last_log_time).toSec() > 1.0f)
+        imuRotateRoll = Eigen::AngleAxis<float>(roll_angle, Eigen::Vector3f::UnitX());
+        imuRotateCombined = imuRotateYawInv * imuRotateRoll;
+        if ((m.header.stamp - last_log_time).toSec() > 0.1f)
         {
             last_log_time = m.header.stamp;
-            int angle_deg = angle * 180 / M_PI;
-            printf("(%f,%f,%f)=%d ",
-                (float)m.linear_acceleration.x,
-                (float)m.linear_acceleration.y,
-                (float)m.linear_acceleration.z,
-                angle_deg);
+            int roll_deg = roll_angle * (180.0f / M_PI);
+            int yaw_deg = yaw_angle * (180.0f / M_PI);
+            int pitch_deg = 0;
+            printf("Yaw=%3d Pitch=%4d Roll=%4d (%f,%f,%f)->(%f,%f,%f)\n",
+                yaw_deg, pitch_deg, roll_deg,
+                (float)pt1.x(), (float)pt1.y(), (float)pt1.z(),
+                (float)pt2.x(), (float)pt2.y(), (float)pt2.z());
+        //  printf("(%f,%f,%f)=%d ",
+        //      (float)m.linear_acceleration.x,
+        //      (float)m.linear_acceleration.y,
+        //      (float)m.linear_acceleration.z,
+        //      angle_deg);
             fflush(stdout);
         }
     }
@@ -127,7 +149,7 @@ static PointOS1 nth_point(int ind, const uint8_t* col_buf) {
             -r * tte.cos_beam_altitude_angles * cosf(h_angle),
             r * tte.cos_beam_altitude_angles * sinf(h_angle),
             r * tte.sin_beam_altitude_angles);
-        auto pt2 = imuRotate * pt1;
+        auto pt2 = imuRotateCombined * pt1;
         
         point.x = pt2.x();
         point.y = pt2.y();
@@ -171,7 +193,8 @@ void add_packet_to_cloud(ns scan_start_ts, ns scan_duration,
 // Main spin loop in non-replay mode
 void spin(const client& cli,
           const std::function<void(const PacketMsg& pm)>& lidar_handler, // Callback for LIDAR packets
-          const std::function<void(const PacketMsg& pm)>& imu_handler) { // Callback for IMU packets
+          const std::function<void(const PacketMsg& pm)>& imu_handler)   // Callback for IMU packets
+{
     // Prepare (single buffer) of input packets
     PacketMsg lidar_packet, imu_packet;
     lidar_packet.buf.resize(lidar_packet_bytes + 1);

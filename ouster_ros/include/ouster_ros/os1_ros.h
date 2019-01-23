@@ -27,6 +27,8 @@ using ns = std::chrono::nanoseconds;
 extern int rotate_using_imu;
 extern int decimate_mask;
 
+/* Set the yaw of the drone (message received from IMU) */
+void set_yaw(float h); // Input is in degrees
 
 /**
  * Read an imu packet into a ROS message. Blocks for up to a second if no data
