@@ -18,7 +18,7 @@ namespace OS1 {
 using namespace ouster::OS1;
 
 // Note that ROS coordinate system is x=forwards, y=left, z=up
-Eigen::Matrix3f imuRotateRoll, imuRotatePitch, imuRotateYaw, imuRotateYawInv, imuRotateCombined;
+Eigen::Matrix3f imuRotateRoll, imuRotatePitch, imuRotateYaw, imuRotateCombined;
 int rotate_using_imu = 0;
 int decimate_mask = 0;
 float yaw_angle = 0.0f;
@@ -30,9 +30,8 @@ ros::Time last_log_time(0.0);
 void set_yaw(float h)
 {
     yaw_angle = (h - 180.0f) * (M_PI / 180.0f);
-    imuRotateYaw = Eigen::AngleAxis<float>(yaw_angle, Eigen::Vector3f::UnitZ());
-    imuRotateYawInv = Eigen::AngleAxis<float>(-yaw_angle, Eigen::Vector3f::UnitZ());
-    imuRotateCombined = imuRotateYawInv * imuRotateRoll;
+    imuRotateYaw = Eigen::AngleAxis<float>(-yaw_angle, Eigen::Vector3f::UnitZ());
+    imuRotateCombined = imuRotateYaw * imuRotatePitch * imuRotateRoll; // In reverse order of application
 }
 
 // -----------------------------------------------------------------------------
@@ -93,28 +92,26 @@ sensor_msgs::Imu packet_to_imu_msg(const PacketMsg& p) {
     if (rotate_using_imu)
     {
         auto pt1 = Eigen::Vector3f(m.linear_acceleration.x, m.linear_acceleration.y, m.linear_acceleration.z);
-        auto pt2 = imuRotateYaw * pt1;
         // Convert the gravity vector into a one-dimensional rotation around the gimbal axis
         // which counteracts the motor rotation
         float roll_angle = atan2(-pt1.y(), -pt1.z());
         // If angle is - then we are rolling left, else rolling right
         imuRotateRoll = Eigen::AngleAxis<float>(roll_angle, Eigen::Vector3f::UnitX());
-        imuRotateCombined = imuRotateYawInv * imuRotateRoll;
+        auto pt2 = imuRotateRoll * pt1;
+        float pitch_angle = atan2(-pt2.x(), -pt2.z());
+        imuRotatePitch = Eigen::AngleAxis<float>(-pitch_angle, Eigen::Vector3f::UnitY());
+        
+        imuRotateCombined = imuRotateYaw * imuRotatePitch * imuRotateRoll; // In reverse order of application
         if ((m.header.stamp - last_log_time).toSec() > 0.1f)
         {
             last_log_time = m.header.stamp;
             int roll_deg = roll_angle * (180.0f / M_PI);
             int yaw_deg = yaw_angle * (180.0f / M_PI);
-            int pitch_deg = 0;
+            int pitch_deg = pitch_angle * (180.0f / M_PI);
             printf("Yaw=%3d Pitch=%4d Roll=%4d (%f,%f,%f)->(%f,%f,%f)\n",
                 yaw_deg, pitch_deg, roll_deg,
                 (float)pt1.x(), (float)pt1.y(), (float)pt1.z(),
                 (float)pt2.x(), (float)pt2.y(), (float)pt2.z());
-        //  printf("(%f,%f,%f)=%d ",
-        //      (float)m.linear_acceleration.x,
-        //      (float)m.linear_acceleration.y,
-        //      (float)m.linear_acceleration.z,
-        //      angle_deg);
             fflush(stdout);
         }
     }
