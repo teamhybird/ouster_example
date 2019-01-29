@@ -12,15 +12,16 @@
 namespace ouster {
 namespace OS1 {
 
-namespace {
+constexpr int max_columns_per_revolution = 2048;
+constexpr int pixels_per_column = 64;
+constexpr int columns_per_buffer = 16;
 
-const int pixels_per_column = 64;
-const int columns_per_buffer = 16;
+namespace { // internal to this header file
 
-const int pixel_bytes = 12;
-const int column_bytes = 16 + (pixels_per_column * pixel_bytes) + 4;
+constexpr int pixel_bytes = 12;
+constexpr int column_bytes = 16 + (pixels_per_column * pixel_bytes) + 4;
 
-const int encoder_ticks_per_rev = 90112;
+constexpr int encoder_ticks_per_rev = 90112;
 
 const std::array<float, OS1::pixels_per_column> beam_altitude_angles = {
     16.611,  16.084,  15.557,  15.029,  14.502,  13.975,  13.447,  12.920,
@@ -87,6 +88,7 @@ inline float col_h_encoder_count(const uint8_t* col_buf) {
     return res;
 }
 
+// Calculate the measurement id, even if the buffer is not aligned
 inline uint32_t col_measurement_id(const uint8_t* col_buf) {
     uint32_t res;
     memcpy(&res, col_buf + (2 * 4), sizeof(uint32_t));

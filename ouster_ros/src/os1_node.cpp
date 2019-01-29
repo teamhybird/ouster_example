@@ -42,7 +42,7 @@ using PacketMsg = ouster_ros::PacketMsg;
 // Main entry point for this ROS node
 int main(int argc, char** argv) {
     // Initialise this ROS node
-    ros::init(argc, argv, "ouster_driver");
+    ros::init(argc, argv, "liveouster_node");
     ros::NodeHandle nh("~");
 
     // Parse the input ROS parameters

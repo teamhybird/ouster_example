@@ -23,6 +23,9 @@ int rotate_using_imu = 0;
 int decimate_mask = 0;
 float yaw_angle = 0.0f;
 ros::Time last_log_time(0.0);
+constexpr int max_packets_per_revolution = ouster::OS1::max_columns_per_revolution / ouster::OS1::columns_per_buffer;
+char rx_packets[max_packets_per_revolution+1]; // 128 data + terminator
+int last_rx_packet = 0;
 
 // -----------------------------------------------------------------------------
 // Set the yaw of the drone (message received from IMU) 
@@ -32,6 +35,12 @@ void set_yaw(float h)
     yaw_angle = (h - 180.0f) * (M_PI / 180.0f);
     imuRotateYaw = Eigen::AngleAxis<float>(-yaw_angle, Eigen::Vector3f::UnitZ());
     imuRotateCombined = imuRotateYaw * imuRotatePitch * imuRotateRoll; // In reverse order of application
+}
+
+// -----------------------------------------------------------------------------
+// Returns true if this lidar packet starts a new packet
+bool is_start_lidar_packet(const PacketMsg& pm) {
+    return col_h_encoder_count(pm.buf.data()) == 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -102,7 +111,8 @@ sensor_msgs::Imu packet_to_imu_msg(const PacketMsg& p) {
         imuRotatePitch = Eigen::AngleAxis<float>(-pitch_angle, Eigen::Vector3f::UnitY());
         
         imuRotateCombined = imuRotateYaw * imuRotatePitch * imuRotateRoll; // In reverse order of application
-        if ((m.header.stamp - last_log_time).toSec() > 0.1f)
+#if 0
+        if ((m.header.stamp - last_log_time).toSec() > 0.2f)
         {
             last_log_time = m.header.stamp;
             int roll_deg = roll_angle * (180.0f / M_PI);
@@ -114,6 +124,7 @@ sensor_msgs::Imu packet_to_imu_msg(const PacketMsg& p) {
                 (float)pt2.x(), (float)pt2.y(), (float)pt2.z());
             fflush(stdout);
         }
+#endif
     }
     return m;
 }
@@ -168,6 +179,32 @@ void add_packet_to_cloud(ns scan_start_ts, ns scan_duration,
                          const PacketMsg& pm, CloudOS1& cloud) {
     const uint8_t* buf = pm.buf.data();
     
+	// Output information about how many packets were received in this revolution
+	int iValid = col_valid(buf);
+	int iEnc = col_h_encoder_count(buf);
+	int iPkt1 = (iEnc * max_packets_per_revolution) / encoder_ticks_per_rev; // Currently equivalent to dividing by 44
+	int iPkt2 = col_measurement_id(buf); // This increments but does not reset to 0 like the docs claim it should
+	if (iValid != -1)
+	{
+		printf("Invalid lidar packet\n");
+	}
+	if (iPkt1 != iPkt2)
+	{
+//		printf("Mismatch between measurement id %d and encoder count %d\n", iPkt2, iEnc);
+	}
+	if (iPkt1 >= max_packets_per_revolution)
+	{
+		printf("Error with packet id %d\n", iPkt1);
+		iPkt1 = 0;
+	}
+	if (iPkt1 < last_rx_packet)
+	{
+		printf("Rx: %s\n", &rx_packets[0]);
+		memset(&rx_packets[0], '0', max_packets_per_revolution);
+	}
+	rx_packets[iPkt1]++; // Increment packet count
+	last_rx_packet = iPkt1;
+
     static int idecimatetoggle = 0;
     idecimatetoggle++;
     int idecimate = (idecimatetoggle & 64) ? 64-1 : 0-1;
@@ -230,12 +267,15 @@ static ns nearest_scan_dur(ns scan_dur, ns ts) {
 std::function<void(const PacketMsg&)> batch_packets(
     ns scan_dur, const std::function<void(ns, const CloudOS1&)>& f) {
     auto cloud = std::make_shared<OS1::CloudOS1>();
-    auto scan_ts = ns(-1L);
+    auto scan_ts = ns(-1L); // Flag the scan timestamp as being unknown
 
     return [=](const PacketMsg& pm) mutable {
         ns packet_ts = OS1::timestamp_of_lidar_packet(pm);
-        if (scan_ts.count() == -1L)
-            scan_ts = nearest_scan_dur(scan_dur, packet_ts);
+        bool bIsStart = is_start_lidar_packet(pm);
+			if (bIsStart)
+				scan_ts = packet_ts; // Synchronise revolution with clock
+        if (scan_ts.count() == -1L) // If the scan timestamp is unknown
+            scan_ts = nearest_scan_dur(scan_dur, packet_ts); // I think this assumes scan duration never changes over course of OS1 lifetime
 
         OS1::add_packet_to_cloud(scan_ts, scan_dur, pm, *cloud);
 
