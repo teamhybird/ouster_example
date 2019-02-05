@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -e
+
+reponame=$(basename $PWD | awk '{print tolower($0)}')
+arch=$(arch)
+
+imagename="hybird/$arch/$reponame:latest"
+docker build -t $imagename .
