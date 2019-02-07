@@ -33,8 +33,8 @@ sensor_msgs::Imu packet_to_imu_msg(const PacketMsg& p,
     m.header.stamp.fromNSec(imu_gyro_ts(buf));
     m.header.frame_id = frame;
 
-    m.orientation.x = 1;
-    m.orientation.y = 0;
+    m.orientation.x = 0;
+    m.orientation.y = 1;
     m.orientation.z = 0;
     m.orientation.w = 0;
 

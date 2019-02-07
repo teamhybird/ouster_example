@@ -1,4 +1,5 @@
 <launch>
+  <!-- <node pkg="tf" type="static_transform_publisher" name="os1_sensor_to_map"  args="0 0 0 0 0 0 /map    /os1_sensor 10" /> -->
   <arg name="os1_hostname" default="" doc="hostname or IP in dotted decimal form of the sensor"/>
   <arg name="os1_udp_dest" default="" doc="hostname or IP where the sensor will send data packets"/>
   <arg name="os1_lidar_port" default="7502" doc="port to which the sensor should send lidar data"/>
