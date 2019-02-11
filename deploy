@@ -1,4 +1,4 @@
 #!/bin/sh
 
-rsync -avrx --exclude '.git' . nvidia@192.168.1.117:/home/nvidia/felix/fullcloud
-ssh nvidia@192.168.1.117 'docker build -t hybird/aarch64/fullcloud /home/nvidia/felix/fullcloud'
+rsync -avrx --exclude '.git' . nvidia@192.168.1.106:/home/nvidia/lou/ouster
+ssh nvidia@192.168.1.106 'docker build -t hybird/aarch64/ouster /home/nvidia/lou/ouster'

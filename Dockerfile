@@ -20,4 +20,4 @@ RUN source /opt/ros/kinetic/setup.bash \
 
 CMD cd /home/catkin_ws \
         && source devel/setup.bash \
-        && roslaunch ouster_ros os1.launch replay:=true
+        && roslaunch ouster_ros os1.launch 
